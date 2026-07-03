@@ -1,0 +1,1 @@
+{"name":"feigin-claude-gateway","version":"1.0.0","description":"Claude API Gateway — ChatGPT + Gemini → Claude z kontekstem Feigin Electric","main":"src/index.js","type":"module","scripts":{"start":"node src/index.js","dev":"node --watch src/index.js"},"dependencies":{"express":"^4.19.0","@anthropic-ai/sdk":"^0.24.0"},"engines":{"node":">=20"}}
