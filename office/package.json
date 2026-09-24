@@ -1,0 +1,10 @@
+{
+  "name": "feigin-office-panel",
+  "private": true,
+  "type": "commonjs",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node tests/invariants.test.js"
+  }
+}
