@@ -1,0 +1,13 @@
+:root { --red: #cc0000; --green: #3aaa35; --purple: #8b5cf6; }
+* { box-sizing: border-box; }
+body { margin: 0; font-family: system-ui, sans-serif; background: #0f1115; color: #eaeaea; }
+header { display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; background: #16181d; border-bottom: 2px solid var(--red); }
+.brand { font-weight: 700; }
+.header-kpi span { margin-left: 16px; }
+nav { display: flex; flex-wrap: wrap; gap: 4px; padding: 8px 12px; background: #1a1d24; }
+nav a { color: #aaa; text-decoration: none; padding: 8px 12px; border-radius: 6px; }
+nav a.active { background: var(--red); color: #fff; }
+main { padding: 20px; max-width: 1000px; margin: 0 auto; }
+pre { background: #16181d; padding: 12px; border-radius: 8px; overflow-x: auto; }
+.error { color: #ff6b6b; }
+@media (max-width: 600px) { nav { flex-direction: column; } }
