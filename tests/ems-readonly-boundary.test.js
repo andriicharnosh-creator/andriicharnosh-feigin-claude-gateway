@@ -1,0 +1,6 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {authorizeEmsRequest,validateSourceEndpoint} from '../src/ems-readonly-boundary.js';
+const scope={tenant_id:'test-tenant',project_id:'test-project',object_id:'test-object',meter_id:'test-meter'};
+test('synthetic match allowed only when enabled',()=>{assert.throws(()=>authorizeEmsRequest({authenticatedScope:scope,requestedScope:scope}),/DISABLED/);assert.equal(authorizeEmsRequest({enabled:true,authenticatedScope:scope,requestedScope:scope}).source,'SYNTHETIC');});
+test('cross-tenant and cross-meter denied',()=>{for(const key of ['tenant_id','project_id','object_id','meter_id'])assert.throws(()=>authorizeEmsRequest({enabled:true,authenticatedScope:scope,requestedScope:{...scope,[key]:'foreign'}}),/SCOPE_DENIED/);});
+test('real telemetry export needs independent approval',()=>{assert.throws(()=>authorizeEmsRequest({enabled:true,authenticatedScope:scope,requestedScope:scope,source:'REAL'}),/NOT_APPROVED/);});
+test('source endpoint must use HTTPS without credentials',()=>{assert.throws(()=>validateSourceEndpoint('http://localhost:8794/mcp'),/HTTPS/);assert.equal(validateSourceEndpoint('https://ems.example.invalid/mcp'),'https://ems.example.invalid/mcp');});
