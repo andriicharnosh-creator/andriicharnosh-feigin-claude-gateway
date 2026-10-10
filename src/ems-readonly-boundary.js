@@ -1,6 +1,6 @@
 // Feigin EMS to Claude boundary: synthetic-only preflight. No network or tenant grants.
 // Real source on OVH binds localhost and requires a separately authorized tunnel/proxy.
-const crypto = require('node:crypto');
+import crypto from 'node:crypto';
 const SCOPE_FIELDS = ['tenant_id','project_id','object_id','meter_id'];
 export function authorizeEmsRequest({enabled,authenticatedScope,requestedScope,source='SYNTHETIC',exportApproved=false}={}) {
  if(enabled!==true) throw Error('EMS_CLAUDE_ADAPTER_DISABLED');
