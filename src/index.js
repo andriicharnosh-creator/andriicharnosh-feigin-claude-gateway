@@ -5,6 +5,7 @@
  */
 
 import express from 'express';
+import crypto from 'node:crypto';
 import Anthropic from '@anthropic-ai/sdk';
 
 const app  = express();
@@ -72,9 +73,22 @@ Always: facts → conclusions → plan → risks → leverage.
 Case IDs: FE-CASE-YYYYMMDD-NNN. Save outputs to Drive.`;
 
 function auth(req, res, next) {
-  if (!process.env.GATEWAY_AUTH_KEY) return next();
-  const key = req.headers['x-gateway-key'] || (req.headers['authorization'] || '').replace('Bearer ', '');
-  if (key !== process.env.GATEWAY_AUTH_KEY) return res.status(401).json({ error: 'Unauthorized' });
+  const configuredKey = process.env.GATEWAY_AUTH_KEY;
+  // Never accept model requests when gateway authentication is not configured.
+  if (!configuredKey || !configuredKey.trim()) {
+    return res.status(503).json({ error: 'Gateway authentication unavailable' });
+  }
+  const headerKey = req.headers['x-gateway-key'];
+  const authorization = req.headers.authorization || '';
+  const bearerKey = authorization.startsWith('Bearer ') ? authorization.slice(7) : '';
+  const suppliedKey = typeof headerKey === 'string' ? headerKey : bearerKey;
+  if (!suppliedKey) return res.status(401).json({ error: 'Unauthorized' });
+  // Compare equal-length digests to avoid timing leaks and length-based shortcuts.
+  const { timingSafeEqual, createHash } = crypto;
+  const digest = value => createHash('sha256').update(value, 'utf8').digest();
+  if (!timingSafeEqual(digest(suppliedKey), digest(configuredKey))) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
   next();
 }
 
