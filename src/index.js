@@ -19,7 +19,7 @@ app.use((req, res, next) => {
   next();
 });
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const anthropic = process.env.ANTHROPIC_API_KEY?.trim() ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY }) : null;
 const MODEL = 'claude-sonnet-4-6';
 
 const FEIGIN_SYSTEM = `You are Claude, an AI assistant integrated into the Feigin Electric operational system.
@@ -96,8 +96,18 @@ function log(caller, inputLen, outputLen, ms) {
   console.log(JSON.stringify({ ts: new Date().toISOString(), caller, inputLen, outputLen, ms }));
 }
 
+function modelReady(req, res, next) {
+  if (!anthropic) return res.status(503).json({ error: 'Model provider unavailable' });
+  next();
+}
+
+app.get('/readyz', (_, res) => {
+  const ready = Boolean(anthropic && process.env.GATEWAY_AUTH_KEY?.trim());
+  res.status(ready ? 200 : 503).json({ ready, providerReady: Boolean(anthropic) });
+});
+
 app.get('/health', (_, res) => res.json({
-  status: 'ok', service: 'feigin-claude-gateway', version: '1.0.0', model: MODEL,
+  status: anthropic ? 'ok' : 'degraded', providerReady: Boolean(anthropic), service: 'feigin-claude-gateway', version: '1.0.0', model: MODEL,
   endpoints: ['/health', '/context', '/claude', '/claude/stream', '/openai', '/google', '/feigin'],
   ts: new Date().toISOString()
 }));
@@ -109,7 +119,7 @@ app.get('/context', auth, (_, res) => res.json({
 }));
 
 // POST /claude — główny endpoint
-app.post('/claude', auth, async (req, res) => {
+app.post('/claude', auth, modelReady, async (req, res) => {
   const { message, system, history = [], max_tokens = 2048, caller = 'unknown', json_response = false } = req.body;
   if (!message) return res.status(400).json({ error: 'message required' });
   const t0 = Date.now();
@@ -127,7 +137,7 @@ app.post('/claude', auth, async (req, res) => {
 });
 
 // POST /claude/stream — SSE streaming
-app.post('/claude/stream', auth, async (req, res) => {
+app.post('/claude/stream', auth, modelReady, async (req, res) => {
   const { message, system, history = [], max_tokens = 2048, caller = 'unknown' } = req.body;
   if (!message) return res.status(400).json({ error: 'message required' });
   res.setHeader('Content-Type', 'text/event-stream');
@@ -147,7 +157,7 @@ app.post('/claude/stream', auth, async (req, res) => {
 });
 
 // POST /openai — kompatybilny z OpenAI API (dla ChatGPT Actions)
-app.post('/openai', auth, async (req, res) => {
+app.post('/openai', auth, modelReady, async (req, res) => {
   const { messages = [], max_tokens = 2048 } = req.body;
   if (!messages.length) return res.status(400).json({ error: 'messages required' });
   const t0 = Date.now();
@@ -172,7 +182,7 @@ app.post('/openai', auth, async (req, res) => {
 });
 
 // POST /google — kompatybilny z Google Gemini API (dla Gemini Extensions)
-app.post('/google', auth, async (req, res) => {
+app.post('/google', auth, modelReady, async (req, res) => {
   const { contents = [], generationConfig = {} } = req.body;
   if (!contents.length) return res.status(400).json({ error: 'contents required' });
   const t0 = Date.now();
@@ -190,7 +200,7 @@ app.post('/google', auth, async (req, res) => {
 });
 
 // POST /feigin — najprostszy unified endpoint
-app.post('/feigin', auth, async (req, res) => {
+app.post('/feigin', auth, modelReady, async (req, res) => {
   const { q, caller = 'unknown', json = false } = req.body;
   if (!q) return res.status(400).json({ error: 'q required' });
   const t0 = Date.now();
@@ -205,4 +215,4 @@ app.post('/feigin', auth, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.listen(PORT, () => console.log(JSON.stringify({ ts: new Date().toISOString(), event: 'start', port: PORT, service: 'feigin-claude-gateway', model: MODEL })));
+app.listen(PORT, process.env.HOST || '0.0.0.0', () => console.log(JSON.stringify({ ts: new Date().toISOString(), event: 'start', port: PORT, service: 'feigin-claude-gateway', model: MODEL })));
